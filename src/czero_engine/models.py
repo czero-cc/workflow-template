@@ -22,6 +22,7 @@ class ChatRequest(BaseModel):
     system_prompt: Optional[str] = None
     max_tokens: Optional[int] = 1024
     temperature: Optional[float] = 0.7
+    workspace_filter: Optional[str] = None
 
 
 class ContextChunk(BaseModel):
@@ -129,6 +130,22 @@ class WorkspaceResponse(BaseModel):
     path: str
     description: Optional[str] = None
     created_at: str
+
+
+class WorkspaceInfo(BaseModel):
+    """Information about a workspace."""
+    id: str
+    name: str
+    path: str
+    description: Optional[str] = None
+    status: str
+    created_at: str
+    updated_at: str
+
+
+class WorkspaceListResponse(BaseModel):
+    """Response model for /api/workspaces endpoint."""
+    workspaces: List[WorkspaceInfo]
 
 
 class ProcessingConfig(BaseModel):
