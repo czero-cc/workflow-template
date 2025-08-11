@@ -126,13 +126,11 @@ class PersonaWorkflow:
         )
         
         if self.verbose:
-            console.print(Panel(
-                f"[bold cyan]{persona_info.name}[/bold cyan]\n"
-                f"{persona_info.specialty}\n"
-                f"[dim]{persona_info.tagline}[/dim]",
-                title="Active Persona",
-                expand=False
-            ))
+            print(f"\n=== Active Persona ===")
+            print(f"Name: {persona_info.name}")
+            print(f"Specialty: {persona_info.specialty}")
+            print(f"Tagline: {persona_info.tagline}")
+            print("=" * 20)
             
         return self.active_persona
         
@@ -208,11 +206,9 @@ class PersonaWorkflow:
             
         # Display response
         if self.verbose:
-            console.print(f"[green]{self.active_persona.persona_name}:[/green]")
-            console.print(Panel(
-                Markdown(response.response),
-                expand=False
-            ))
+            print(f"\n{self.active_persona.persona_name}:")
+            print(response.response)
+            print("-" * 40)
             
         return response
         

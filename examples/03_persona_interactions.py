@@ -1,144 +1,196 @@
-"""Examples of interacting with AI personas."""
+"""AI Persona Interactions Example - CZero Engine
+
+This example demonstrates:
+- Listing and discovering AI personas
+- Chatting with specific personas
+- Multi-persona discussions
+- Persona comparison on same topics
+- Maintaining conversation history
+"""
 
 import asyncio
+from czero_engine import CZeroEngineClient
 from czero_engine.workflows import PersonaWorkflow
 
 
 async def persona_examples():
-    """Demonstrate persona interactions."""
+    """Demonstrate persona interactions and capabilities."""
     
-    async with PersonaWorkflow() as workflow:
-        
-        # 1. List available personas
-        print("1. Available Personas:")
-        print("="*50)
-        await workflow.list_personas()
-        print()
-        
-        # 2. Chat with different personas
-        print("2. Individual Persona Chats:")
-        print("="*50)
-        
-        # Chat with Gestalt
-        print("\n--- Gestalt (Adaptive Assistant) ---")
-        await workflow.select_persona("gestalt-default")
-        
-        response = await workflow.chat(
-            "Hello! Can you introduce yourself and explain what makes you unique?"
-        )
-        
-        # Continue conversation
-        await workflow.chat(
-            "How would you help someone learn about AI and machine learning?"
-        )
-        
-        # Chat with Sage
-        print("\n--- Sage (Research & Analysis) ---")
-        await workflow.select_persona("sage")
-        
-        await workflow.chat(
-            "What are the philosophical implications of AGI (Artificial General Intelligence)?"
-        )
-        
-        # Chat with Pioneer
-        print("\n--- Pioneer (Innovation) ---")
-        await workflow.select_persona("pioneer")
-        
-        await workflow.chat(
-            "What innovative applications could combine AR/VR with AI?"
-        )
-        
-        # 3. Multi-persona discussion
-        print("\n3. Multi-Persona Discussion:")
-        print("="*50)
-        
-        discussion = await workflow.multi_persona_discussion(
-            topic="The role of AI in education: opportunities and challenges",
-            persona_ids=["gestalt-default", "sage", "pioneer"],
-            rounds=2
-        )
-        
-        print("\nDiscussion Summary:")
-        for entry in discussion:
-            print(f"\nRound {entry['round']} - {entry['persona']}:")
-            print(f"  {entry['response'][:200]}...")
-        
-        # 4. Persona comparison on same question
-        print("\n4. Persona Comparison:")
-        print("="*50)
-        
-        question = "How should we approach the ethics of AI development?"
-        print(f"\nQuestion: {question}\n")
-        
-        responses = await workflow.persona_comparison(
-            question=question,
-            persona_ids=["gestalt-default", "sage", "pioneer"]
-        )
-        
-        for persona_id, response in responses.items():
-            print(f"\n{persona_id}:")
-            print(f"  {response.response[:250]}...")
-        
-        # 5. Get conversation summary
-        print("\n5. Conversation Summary:")
-        print("="*50)
-        
-        # Switch back to Gestalt to check conversation history
-        await workflow.select_persona("gestalt-default")
-        summary = workflow.get_conversation_summary()
-        
-        print(f"\nActive persona: {summary['persona']}")
-        print(f"Total turns: {summary['turn_count']}")
-        print(f"Message count: {summary['message_count']}")
-        
-        if summary['recent_messages']:
-            print("\nRecent messages:")
-            for msg in summary['recent_messages'][-4:]:
-                role = msg['role'].capitalize()
-                content = msg['content'][:100] + "..." if len(msg['content']) > 100 else msg['content']
-                print(f"  {role}: {content}")
-
-
-async def interactive_persona_chat():
-    """Interactive chat example with a persona."""
+    print("\n🤖 AI Persona Examples")
+    print("=" * 50)
     
-    async with PersonaWorkflow() as workflow:
-        print("Starting interactive chat with Gestalt...")
-        print("="*50)
+    # 1. Discover available personas using direct API
+    print("\n1. Available Personas")
+    print("-" * 30)
+    
+    async with CZeroEngineClient() as client:
+        personas = await client.list_personas()
+        print(f"Found {len(personas.personas)} personas:\n")
         
+        for persona in personas.personas[:5]:  # Show first 5
+            print(f"  📌 {persona.name}")
+            print(f"     Specialty: {persona.specialty}")
+            if persona.tagline:
+                print(f"     Tagline: {persona.tagline[:80]}...")
+            print()
+    
+    # 2. Chat with Gestalt persona  
+    print("\n2. Gestalt Persona Chat")
+    print("-" * 30)
+    
+    async with PersonaWorkflow(verbose=False) as workflow:
+        # Chat with Gestalt (Adaptive Intelligence)
+        print("\n💬 Gestalt - Adaptive Intelligence")
         await workflow.select_persona("gestalt-default")
         
-        # Simulate a conversation
-        messages = [
-            "Hello! I'm interested in learning about vector databases.",
-            "What makes them different from traditional databases?",
-            "Can you give me a practical example of when to use one?",
-            "How do they relate to RAG systems?",
-            "Thank you for the explanation!"
+        # Ask multiple questions to show versatility
+        questions = [
+            "Explain quantum computing in simple terms",
+            "What are the latest breakthroughs in AI safety research?",
+            "What innovative applications could combine blockchain with AI?"
         ]
         
-        for message in messages:
-            print(f"\nYou: {message}")
+        for question in questions:
+            print(f"\n❓ Question: {question}")
+            response = await workflow.chat(
+                message=question,
+                max_tokens=100  # Moderate response length
+            )
+            print(f"💡 Response: {response.response[:250]}...")
+    
+    # 3. Conversation with context
+    print("\n3. Contextual Conversation")
+    print("-" * 30)
+    
+    async with PersonaWorkflow(verbose=False) as workflow:
+        # Have a multi-turn conversation with Gestalt
+        print("\n🎭 Multi-turn conversation with Gestalt\n")
+        
+        await workflow.select_persona("gestalt-default")
+        
+        # Simulate a conversation about a specific topic
+        conversation_flow = [
+            "I want to learn about machine learning",
+            "What are neural networks?",
+            "How do they learn from data?"
+        ]
+        
+        for i, message in enumerate(conversation_flow, 1):
+            print(f"Turn {i} - You: {message}")
             response = await workflow.chat(
                 message=message,
-                maintain_history=True
+                maintain_history=True,  # Keep conversation context
+                max_tokens=100  # Moderate response
             )
-            # Response is printed by the workflow if verbose=True
-            
-            # Small delay to simulate conversation flow
-            await asyncio.sleep(0.5)
+            print(f"Turn {i} - Gestalt: {response.response[:200]}...")
+            print()
+    
+    # 4. Different conversation styles with Gestalt
+    print("\n4. Exploring Gestalt's Versatility")
+    print("-" * 30)
+    
+    async with PersonaWorkflow(verbose=False) as workflow:
+        print("\n❓ Testing different types of queries with Gestalt\n")
         
-        # Show final conversation summary
-        print("\n" + "="*50)
+        await workflow.select_persona("gestalt-default")
+        
+        # Different types of queries to show Gestalt's adaptability
+        query_types = [
+            ("Technical", "How should we balance AI innovation with ethical considerations?"),
+            ("Creative", "Write a haiku about artificial intelligence"),
+            ("Analytical", "What are the pros and cons of remote work?")
+        ]
+        
+        for query_type, question in query_types:
+            print(f"🔹 {query_type} Query: {question}")
+            response = await workflow.chat(
+                message=question,
+                maintain_history=False,  # Fresh context for each
+                max_tokens=100  # Shorter responses for variety
+            )
+            print(f"   Response: {response.response[:200]}...")
+            print()
+
+
+async def interactive_chat_example():
+    """Demonstrate interactive conversation with context."""
+    
+    print("\n5. Interactive Conversation")
+    print("-" * 30)
+    
+    async with PersonaWorkflow(verbose=False) as workflow:
+        print("\n💬 Starting conversation with Gestalt...\n")
+        
+        await workflow.select_persona("gestalt-default")
+        
+        # Simulate a multi-turn conversation
+        conversation = [
+            "I'm building a RAG system. What are the key components I need?",
+            "How do I choose the right embedding model?",
+            "What chunk size and overlap should I use?",
+            "How can I evaluate the quality of my RAG responses?",
+        ]
+        
+        for i, message in enumerate(conversation, 1):
+            print(f"👤 You: {message}")
+            
+            response = await workflow.chat(
+                message=message,
+                maintain_history=True,
+                max_tokens=100  # Moderate response
+            )
+            
+            print(f"🤖 Gestalt: {response.response[:300]}...")
+            print()
+            
+            # Small delay for readability
+            await asyncio.sleep(0.3)
+        
+        # Get conversation summary
         summary = workflow.get_conversation_summary()
-        print(f"Conversation ended with {summary['turn_count']} turns")
+        print(f"📊 Conversation Summary:")
+        print(f"   Total turns: {summary['turn_count']}")
+        print(f"   Messages: {summary['message_count']}")
+        print(f"   Active persona: {summary['persona']}")
+
+
+async def persona_with_rag():
+    """Demonstrate personas using RAG context."""
+    
+    print("\n6. Persona + RAG Integration")
+    print("-" * 30)
+    
+    async with CZeroEngineClient() as client:
+        # Use persona chat with RAG context
+        print("\n🔍 Asking Gestalt with document context...\n")
+        
+        # This would use any processed documents in your workspace
+        response = await client.persona_chat(
+            persona_id="gestalt-default",  # Use real persona
+            message="Based on the documents, what are the key features of CZero Engine?",
+            max_tokens=100  # Moderate response
+        )
+        
+        print(f"Response: {response.response[:400]}...")
+        print(f"Timestamp: {response.timestamp}")
+
+
+async def main():
+    """Run all persona examples with error handling."""
+    try:
+        await persona_examples()
+        await interactive_chat_example()
+        await persona_with_rag()
+        print("\n✅ All persona examples completed successfully!")
+        
+    except Exception as e:
+        print(f"\n❌ Error: {e}")
+        print("\nTroubleshooting:")
+        print("1. Ensure CZero Engine is running")
+        print("2. Check API server is active")
+        print("3. Verify personas are loaded")
+        print("4. Check LLM models are available")
 
 
 if __name__ == "__main__":
-    print("Running persona examples...")
-    asyncio.run(persona_examples())
-    
-    print("\n\n" + "="*70)
-    print("Running interactive chat example...")
-    print("="*70)
-    asyncio.run(interactive_persona_chat())
+    asyncio.run(main())

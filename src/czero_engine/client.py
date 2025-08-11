@@ -40,7 +40,7 @@ class CZeroEngineClient:
     def __init__(
         self, 
         base_url: str = "http://localhost:1421",
-        timeout: float = 30.0,
+        timeout: float = 60.0,
         verbose: bool = False
     ):
         """
@@ -48,7 +48,7 @@ class CZeroEngineClient:
         
         Args:
             base_url: Base URL for CZero Engine API (default: http://localhost:1421)
-            timeout: Request timeout in seconds
+            timeout: Request timeout in seconds (default: 60s for LLM operations)
             verbose: Enable verbose logging
         """
         self.base_url = base_url.rstrip("/")
@@ -71,7 +71,7 @@ class CZeroEngineClient:
     def _log(self, message: str):
         """Log message if verbose mode is enabled."""
         if self.verbose:
-            console.print(f"[dim]{message}[/dim]")
+            print(message)  # Use plain print instead of Rich console
             
     # ==================== Health Check ====================
     
@@ -151,7 +151,9 @@ class CZeroEngineClient:
         limit: int = 10,
         similarity_threshold: float = 0.7,
         include_content: bool = True,
-        workspace_filter: Optional[str] = None
+        workspace_filter: Optional[str] = None,
+        hierarchy_level: Optional[str] = None,
+        include_hierarchy: bool = False
     ) -> SemanticSearchResponse:
         """
         Perform semantic search across your document knowledge base.
@@ -165,6 +167,8 @@ class CZeroEngineClient:
             similarity_threshold: Minimum similarity score (0.0-1.0)
             include_content: Whether to include full content in results
             workspace_filter: Optional workspace ID to limit search
+            hierarchy_level: Optional hierarchy level ("0" for sections, "1" for paragraphs)
+            include_hierarchy: Whether to include parent chunks and hierarchy path
             
         Returns:
             SemanticSearchResponse with matching chunks
@@ -174,7 +178,9 @@ class CZeroEngineClient:
             limit=limit,
             similarity_threshold=similarity_threshold,
             include_content=include_content,
-            workspace_filter=workspace_filter
+            workspace_filter=workspace_filter,
+            hierarchy_level=hierarchy_level,
+            include_hierarchy=include_hierarchy
         )
         
         self._log(f"Searching for: {query[:50]}...")

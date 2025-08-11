@@ -57,7 +57,7 @@ logs/
 Thumbs.db
 
 # Project specific
-sample_docs/
+# Note: sample_docs/ is used by example 02_rag_system.py
 sample_project/
 batch_test/
 test_*/

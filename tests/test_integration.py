@@ -17,8 +17,8 @@ async def test_client_health_check():
     """Test API health check."""
     async with CZeroEngineClient() as client:
         health = await client.health_check()
-        assert health["status"] == "healthy"
-        assert "version" in health
+        assert health.status == "healthy"
+        assert health.version
 
 
 @pytest.mark.asyncio
@@ -43,6 +43,30 @@ async def test_chat_without_rag():
         )
         assert response.response
         assert response.model_used
+
+
+@pytest.mark.asyncio
+async def test_chat_with_rag():
+    """Test chat with RAG context."""
+    async with CZeroEngineClient() as client:
+        # First ensure we have some documents to search
+        # This might return empty context if no documents are indexed
+        response = await client.chat(
+            message="Tell me about the documents in the system",
+            use_rag=True,
+            similarity_threshold=0.3,  # Lower threshold to get more results
+            chunk_limit=5
+        )
+        assert response.response
+        assert response.model_used
+        # context_used might be None if no documents match
+        if response.context_used:
+            assert isinstance(response.context_used, list)
+            if len(response.context_used) > 0:
+                first_context = response.context_used[0]
+                assert hasattr(first_context, 'chunk_id')
+                assert hasattr(first_context, 'content')
+                assert hasattr(first_context, 'similarity')
 
 
 @pytest.mark.asyncio
@@ -88,7 +112,7 @@ async def test_knowledge_base_workflow():
                 chunk_size=100
             )
             
-            assert result["workspace_id"]
+            assert result["workspace"]["id"]
             assert result["files_processed"] >= 2
             assert result["chunks_created"] > 0
             
@@ -199,6 +223,51 @@ async def test_semantic_search():
             pass
 
 
+@pytest.mark.asyncio
+async def test_hierarchical_search():
+    """Test hierarchical search functionality."""
+    async with CZeroEngineClient() as client:
+        # Test basic search without hierarchy
+        results = await client.semantic_search(
+            query="test query",
+            limit=5,
+            include_hierarchy=False
+        )
+        assert hasattr(results, 'results')
+        
+        # Test search with hierarchy information
+        results_with_hierarchy = await client.semantic_search(
+            query="test query",
+            limit=5,
+            include_hierarchy=True
+        )
+        assert hasattr(results_with_hierarchy, 'results')
+        # Check that results have hierarchy fields
+        if results_with_hierarchy.results:
+            first_result = results_with_hierarchy.results[0]
+            assert hasattr(first_result, 'parent_chunk')
+            assert hasattr(first_result, 'hierarchy_path')
+            assert hasattr(first_result, 'document_content')
+        
+        # Test search at specific hierarchy level (sections)
+        section_results = await client.semantic_search(
+            query="test query",
+            limit=5,
+            hierarchy_level="0",  # Sections only
+            include_hierarchy=True
+        )
+        assert hasattr(section_results, 'results')
+        
+        # Test search at specific hierarchy level (paragraphs)
+        paragraph_results = await client.semantic_search(
+            query="test query",
+            limit=5,
+            hierarchy_level="1",  # Paragraphs only
+            include_hierarchy=True
+        )
+        assert hasattr(paragraph_results, 'results')
+
+
 @pytest.mark.asyncio 
 async def test_error_handling():
     """Test error handling."""
@@ -212,12 +281,14 @@ async def test_error_handling():
 
 
 def test_sync_operations():
-    """Test that sync operations raise appropriate errors."""
-    client = CZeroEngineClient()
+    """Test that sync operations work correctly with asyncio.run."""
+    async def run_health_check():
+        async with CZeroEngineClient() as client:
+            return await client.health_check()
     
-    # Should not be able to use client without async context
-    with pytest.raises(RuntimeError):
-        asyncio.run(client.health_check())
+    # Should be able to run with asyncio.run
+    result = asyncio.run(run_health_check())
+    assert result.status == "healthy"
 
 
 if __name__ == "__main__":

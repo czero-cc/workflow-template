@@ -47,6 +47,8 @@ class SemanticSearchRequest(BaseModel):
     similarity_threshold: float = 0.7
     include_content: bool = True
     workspace_filter: Optional[str] = None
+    hierarchy_level: Optional[str] = None  # "0" for sections, "1" for paragraphs
+    include_hierarchy: bool = False  # Include parent chunks and hierarchy path
 
 
 class SearchResult(BaseModel):
@@ -56,6 +58,10 @@ class SearchResult(BaseModel):
     content: str
     similarity: float
     metadata: Dict[str, Any] = Field(default_factory=dict)
+    # Optional hierarchical context
+    parent_chunk: Optional['SearchResult'] = None
+    hierarchy_path: Optional[List['SearchResult']] = None
+    document_content: Optional[str] = None
 
 
 class SemanticSearchResponse(BaseModel):

@@ -1,0 +1,7 @@
+
+        Semantic search goes beyond keyword matching to understand the meaning 
+        and intent behind queries. It uses vector embeddings to represent text 
+        as high-dimensional vectors. Similar content has vectors that are close 
+        together in the vector space. This enables finding relevant information 
+        even when exact keywords don't match.
+        
