@@ -1,0 +1,72 @@
+[project]
+name = "czero-engine-python"
+version = "0.1.0"
+description = "Official Python SDK and workflows for CZero Engine API"
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "MIT"}
+authors = [
+    {name = "CZero Engine Team", email = "info@czero.cc"},
+]
+keywords = ["czero", "czero-engine", "rag", "llm", "vector-search", "document-processing", "ai", "workflow"]
+
+dependencies = [
+    # Core dependencies
+    "httpx>=0.27.0",  # Modern async HTTP client
+    "pydantic>=2.9.0",  # Data validation and models
+    "python-dotenv>=1.0.0",  # Environment management
+    "rich>=13.9.0",  # Beautiful terminal output
+    "typer>=0.12.0",  # Modern CLI framework
+    
+    # Utilities
+    "pathlib>=1.0.1",
+    "asyncio>=3.4.3",
+]
+
+[project.optional-dependencies]
+dev = [
+    "black>=24.10.0",
+    "ruff>=0.7.0",
+    "mypy>=1.13.0",
+    "ipython>=8.29.0",
+]
+langgraph = [
+    "langgraph>=0.6.4",
+    "langchain>=0.3.27",
+    "langchain-core>=0.3.74",
+]
+
+[project.scripts]
+czero = "czero_engine.cli:app"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/czero_engine"]
+
+[tool.uv]
+dev-dependencies = [
+    "pytest>=8.3.3",
+    "pytest-asyncio>=0.24.0",
+    "pytest-cov>=6.0.0",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "B", "C90", "D"]
+ignore = ["D100", "D101", "D102", "D103", "D104", "D105", "D106", "D107"]
+
+[tool.black]
+line-length = 100
+target-version = ['py311']
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
