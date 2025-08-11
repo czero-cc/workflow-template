@@ -11,7 +11,7 @@
 **Official Python SDK for CZero Engine**  
 *Personal AI Interface: full local AI suite with document processing, semantic search, and RAG system with AI personas*
 
-[Installation](#-installation) • [Quick Start](#-quick-start) • [Examples](#-examples) • [API Docs](#-api-reference) • [Contributing](CONTRIBUTING.md)
+[Installation](#-installation) • [Quick Start](#-quick-start) • [Examples](#-examples) • [API Docs](https://docs.czero.cc) • [Contributing](CONTRIBUTING.md)
 
 </div>
 
