@@ -28,9 +28,7 @@ class PersonaWorkflow:
     Workflow for interacting with AI personas in CZero Engine.
     
     Personas provide specialized interaction styles and expertise:
-    - Gestalt: Adaptive general assistant
-    - Sage: Research and analysis expert
-    - Pioneer: Innovation and creative solutions
+    - Gestalt: General AI assistant (default persona)
     
     Each persona maintains conversation context for coherent dialogue.
     """
@@ -407,19 +405,6 @@ async def example_personas():
         # Continue conversation
         response = await workflow.chat(
             "Can you help me understand semantic search?"
-        )
-        
-        # Switch to Sage persona
-        await workflow.select_persona("sage")
-        response = await workflow.chat(
-            "What are the philosophical implications of AI?"
-        )
-        
-        # Multi-persona discussion
-        discussion = await workflow.multi_persona_discussion(
-            topic="The future of human-AI collaboration",
-            persona_ids=["gestalt-default", "sage", "pioneer"],
-            rounds=2
         )
         
         # Compare persona responses

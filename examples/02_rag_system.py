@@ -20,6 +20,8 @@ async def rag_example():
     print("\n🚀 RAG System Example")
     print("=" * 50)
     
+    workspace_id = None
+    
     # Step 1: Create knowledge base from documents
     print("\n1. Creating Knowledge Base")
     print("-" * 30)
@@ -70,41 +72,47 @@ async def rag_example():
             chunk_overlap=50
         )
         
+        workspace_id = result['workspace']['id']
         print(f"✅ Created workspace: {result['workspace']['name']}")
-        print(f"   ID: {result['workspace']['id']}")
+        print(f"   ID: {workspace_id}")
         print(f"   Processed {result['files_processed']} files")
         print(f"   Created {result['chunks_created']} chunks")
+        
+        # Important: Give the system time to index the documents
+        print("\n⏳ Waiting for indexing to complete...")
+        await asyncio.sleep(5)  # Wait 5 seconds for indexing
     
-    # Step 2: Demonstrate hierarchical search
-    print("\n2. Hierarchical Semantic Search")
+    # Step 2: Verify documents are indexed by searching
+    print("\n2. Verifying Document Indexing")
     print("-" * 30)
     async with CZeroEngineClient() as client:
-        # Search with hierarchy support
-        results = await client.semantic_search(
-            query="How does AI and machine learning work?",
+        # Search for content we just indexed, using workspace filter
+        test_results = await client.semantic_search(
+            query="artificial intelligence",
             limit=3,
-            include_hierarchy=True,
-            hierarchy_level=None  # Search all levels
+            similarity_threshold=0.3,  # Low threshold to ensure we find something
+            workspace_filter=workspace_id  # Search only in our workspace
         )
         
-        print(f"Found {len(results.results)} results with hierarchy:")
-        for i, res in enumerate(results.results, 1):
-            print(f"\n  {i}. Score: {res.similarity:.3f}")
-            print(f"     {res.content[:100]}...")
-            if res.parent_chunk:
-                print(f"     ↳ Has parent context")
+        if test_results.results:
+            print(f"✅ Found {len(test_results.results)} indexed documents")
+            for i, res in enumerate(test_results.results, 1):
+                print(f"  {i}. Score: {res.similarity:.3f}")
+                print(f"     {res.content[:100]}...")
+        else:
+            print("⚠️  Documents may still be indexing. Continuing with example...")
     
     # Step 3: Use RAG for Q&A
     print("\n3. RAG-Enhanced Q&A")
     print("-" * 30)
+    print("Note: RAG searches across all workspaces, not just the one we created.")
     async with RAGWorkflow() as rag_workflow:
         
-        # Ask questions with RAG
+        # Ask questions that match our indexed documents
         questions = [
-            "What is CZero Engine and what are its main features?",
+            "What is artificial intelligence and machine learning?",
             "How does semantic search work?",
-            "What's the difference between AI, machine learning, and deep learning?",
-            "Does CZero Engine support GPU acceleration?"
+            "What features does CZero Engine provide?"
         ]
         
         for i, question in enumerate(questions, 1):
@@ -112,7 +120,7 @@ async def rag_example():
             response = await rag_workflow.ask(
                 question=question,
                 chunk_limit=3,
-                similarity_threshold=0.5
+                similarity_threshold=0.3  # Lower threshold to be more inclusive
             )
             print(f"💡 A{i}: {response.response[:250]}...")
             
@@ -124,7 +132,7 @@ async def rag_example():
     # Step 4: Compare with and without RAG
     print("\n4. RAG vs Non-RAG Comparison")
     print("-" * 30)
-    comparison_q = "What document processing features does CZero Engine provide?"
+    comparison_q = "What is machine learning and how does it relate to AI?"
     
     async with RAGWorkflow() as rag_workflow:
         comparison = await rag_workflow.compare_with_without_rag(
@@ -133,28 +141,31 @@ async def rag_example():
         
         print(f"\n🤔 Question: {comparison_q}")
         print("\n❌ Without RAG (generic response):")
-        print(f"   {comparison['without_rag'][:200]}...")
+        print(f"   {comparison['without_rag'].response[:200]}...")
         print("\n✅ With RAG (context-aware):")
-        print(f"   {comparison['with_rag'][:200]}...")
+        print(f"   {comparison['with_rag'].response[:200]}...")
         print(f"\n📊 Statistics:")
-        print(f"   Context chunks used: {comparison['chunks_used']}")
+        chunks_used = len(comparison['with_rag'].context_used) if comparison['with_rag'].context_used else 0
+        print(f"   Context chunks used: {chunks_used}")
         print(f"   Improvement: More specific and accurate with RAG")
     
     # Step 5: Find similar content
     print("\n5. Similarity Search")
     print("-" * 30)
     async with CZeroEngineClient() as client:
-        # Get all chunks first
+        # Search in our workspace for semantic search content
         search_res = await client.semantic_search(
             query="semantic search",
-            limit=1
+            limit=1,
+            workspace_filter=workspace_id
         )
         
         if search_res.results:
             chunk_id = search_res.results[0].chunk_id
             similar = await client.similarity_search(
                 chunk_id=chunk_id,
-                limit=3
+                limit=3,
+                similarity_threshold=0.3  # Lower threshold
             )
             
             print(f"Content similar to chunk '{chunk_id[:20]}...':\n")

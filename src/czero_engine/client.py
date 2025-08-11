@@ -14,7 +14,7 @@ from .models import (
     SimilaritySearchRequest, RecommendationsRequest,
     DocumentsResponse, DocumentMetadata,
     EmbeddingRequest, EmbeddingResponse,
-    WorkspaceCreateRequest, WorkspaceResponse,
+    WorkspaceCreateRequest, WorkspaceResponse, WorkspaceListResponse, WorkspaceInfo,
     ProcessFilesRequest, ProcessFilesResponse, ProcessingConfig,
     PersonaListResponse, PersonaChatRequest, PersonaChatResponse,
     HealthResponse,
@@ -99,7 +99,8 @@ class CZeroEngineClient:
         temperature: float = 0.7,
         similarity_threshold: float = 0.7,
         chunk_limit: int = 5,
-        use_web_search: bool = False
+        use_web_search: bool = False,
+        workspace_filter: Optional[str] = None
     ) -> ChatResponse:
         """
         Send a chat message to CZero Engine LLM with optional RAG.
@@ -117,6 +118,7 @@ class CZeroEngineClient:
             similarity_threshold: Minimum similarity for RAG chunks
             chunk_limit: Maximum number of context chunks to retrieve
             use_web_search: Whether to enable web search (if available)
+            workspace_filter: Optional workspace ID to filter RAG context
             
         Returns:
             ChatResponse with generated text and optional context chunks
@@ -132,7 +134,8 @@ class CZeroEngineClient:
             use_web_search=use_web_search,
             system_prompt=system_prompt,
             max_tokens=max_tokens,
-            temperature=temperature
+            temperature=temperature,
+            workspace_filter=workspace_filter
         )
         
         self._log(f"Sending chat request (RAG: {use_rag})...")
@@ -340,6 +343,20 @@ class CZeroEngineClient:
         )
         response.raise_for_status()
         return WorkspaceResponse(**response.json())
+        
+    async def list_workspaces(self) -> WorkspaceListResponse:
+        """
+        List all available workspaces.
+        
+        Returns a list of workspaces with their IDs, names, paths, and status.
+        
+        Returns:
+            WorkspaceListResponse containing list of WorkspaceInfo objects
+        """
+        self._log("Listing workspaces...")
+        response = await self.client.get(f"{self.base_url}/api/workspaces")
+        response.raise_for_status()
+        return WorkspaceListResponse(**response.json())
         
     async def process_files(
         self,
