@@ -110,6 +110,7 @@ async def rag_example():
     
     async with CZeroEngineClient() as client:
         # Ask questions using the actual chat API with RAG
+
         questions = [
             "What is artificial intelligence and machine learning?",
             "How does semantic search work?",
@@ -203,7 +204,8 @@ async def rag_example():
             chunk_id = search_res.results[0].chunk_id
             similar = await client.find_similar_chunks(
                 chunk_id=chunk_id,
-                limit=3
+                limit=3,
+                similarity_threshold=0.3  # Lower threshold
             )
             
             print(f"Content similar to chunk '{chunk_id[:20]}...':\n")
