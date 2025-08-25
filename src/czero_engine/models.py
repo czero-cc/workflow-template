@@ -70,18 +70,8 @@ class SemanticSearchResponse(BaseModel):
     results: List[SearchResult]
 
 
-class SimilaritySearchRequest(BaseModel):
-    """Request model for /api/vector/search/similarity endpoint."""
-    chunk_id: str
-    limit: int = 5
-    similarity_threshold: float = 0.5
-
-
-class RecommendationsRequest(BaseModel):
-    """Request model for /api/vector/recommendations endpoint."""
-    positive_chunk_ids: List[str]
-    negative_chunk_ids: Optional[List[str]] = Field(default_factory=list)
-    limit: int = 10
+# Note: SimilaritySearchRequest and RecommendationsRequest have been deprecated
+# Use SemanticSearchRequest or HierarchicalRetrievalRequest instead
 
 
 # Document Models
@@ -205,6 +195,7 @@ class PersonaChatRequest(BaseModel):
     conversation_history: Optional[List[ConversationMessage]] = None
     max_tokens: Optional[int] = 1024
     temperature: Optional[float] = 0.7
+    workspace_filter: Optional[str] = None  # For RAG context
 
 
 class PersonaChatResponse(BaseModel):

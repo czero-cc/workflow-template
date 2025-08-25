@@ -64,6 +64,7 @@ class CZeroEngineLLM(BaseChatModel):
     temperature: float = 0.7
     base_url: str = "http://localhost:1421"
     persona_id: str = "gestalt-default"
+    workspace_id: Optional[str] = None  # For RAG context
     
     class Config:
         arbitrary_types_allowed = True
@@ -123,7 +124,8 @@ class CZeroEngineLLM(BaseChatModel):
                 message=prompt,
                 system_prompt_template=system_prompt,
                 max_tokens=self.max_tokens,
-                temperature=self.temperature
+                temperature=self.temperature,
+                workspace_filter=self.workspace_id  # Add RAG context if available
             )
         else:
             response = await self.client.chat(
@@ -131,7 +133,8 @@ class CZeroEngineLLM(BaseChatModel):
                 use_rag=self.use_rag,
                 system_prompt=system_prompt,
                 max_tokens=self.max_tokens,
-                temperature=self.temperature
+                temperature=self.temperature,
+                workspace_filter=self.workspace_id  # Add RAG context if available
             )
         
         message = AIMessage(content=response.response)

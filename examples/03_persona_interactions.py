@@ -161,13 +161,32 @@ async def persona_with_rag():
     print("-" * 30)
     
     async with CZeroEngineClient() as client:
-        # Use persona chat with RAG context
+        # First, list workspaces to find one with documents
+        workspaces = await client.list_workspaces()
+        workspace_id = None
+        
+        if workspaces.workspaces:
+            # Use the first available workspace
+            workspace_id = workspaces.workspaces[0].id
+            print(f"📁 Using workspace: {workspaces.workspaces[0].name}")
+        else:
+            print("⚠️ No workspaces found. Creating a sample workspace...")
+            # Create a sample workspace if none exist
+            import tempfile
+            with tempfile.TemporaryDirectory() as temp_dir:
+                workspace = await client.create_workspace(
+                    name="Sample Workspace",
+                    path=temp_dir
+                )
+                workspace_id = workspace.id
+        
+        # Use persona chat with RAG context from workspace
         print("\n🔍 Asking Gestalt with document context...\n")
         
-        # This would use any processed documents in your workspace
         response = await client.persona_chat(
             persona_id="gestalt-default",  # Use real persona
             message="Based on the documents, what are the key features of CZero Engine?",
+            workspace_filter=workspace_id,  # Enable RAG with this workspace
             max_tokens=100  # Moderate response
         )
         

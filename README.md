@@ -89,7 +89,6 @@ async with CZeroEngineClient() as client:
     response = await client.chat(
         message="What are the key features?",
         use_rag=True,
-        chunk_limit=5,
         similarity_threshold=0.3  # Lower threshold for better recall
     )
     
@@ -99,7 +98,7 @@ async with CZeroEngineClient() as client:
         use_rag=False
     )
     response_with_rag = await client.chat(
-        message="Explain semantic search",
+        message="Explain semantic search", 
         use_rag=True,
         similarity_threshold=0.3
     )
@@ -122,7 +121,7 @@ results = await client.semantic_search(
 # Use direct client for persona interactions
 async with CZeroEngineClient() as client:
     # Chat with default Gestalt persona
-    response = await client.chat_with_persona(
+    response = await client.persona_chat(
         persona_id="gestalt-default",  # default persona
         message="Analyze the implications of AGI"
     )
@@ -130,7 +129,8 @@ async with CZeroEngineClient() as client:
     # Or use regular chat (defaults to Gestalt if no persona specified)
     response = await client.chat(
         message="What are the key features of CZero Engine?",
-        use_rag=True
+        use_rag=True,
+        workspace_filter="workspace-id"  # Optional: Filter to specific workspace
     )
 ```
 
@@ -187,7 +187,7 @@ from langchain_anthropic import ChatAnthropic
 
 # Use multiple LLMs in your workflow
 cloud_llm = ChatOpenAI(model="gpt-4")  # Or Anthropic, Google, etc.
-local_llm = CZeroEngineLLM()  # Your local CZero Engine
+local_llm = CZeroLLM()  # Your local CZero Engine
 
 # The possibilities are endless! 🚀
 ```
@@ -269,7 +269,6 @@ uv run czero version
 | `/api/health` | GET | System health check |
 | `/api/chat/send` | POST | LLM chat with optional RAG |
 | `/api/vector/search/semantic` | POST | Semantic search with hierarchy |
-| `/api/vector/search/similarity` | POST | Find similar chunks |
 | `/api/embeddings/generate` | POST | Generate text embeddings |
 | `/api/workspaces/create` | POST | Create workspace |
 | `/api/workspaces/process` | POST | Process documents |

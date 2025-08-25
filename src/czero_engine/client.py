@@ -11,7 +11,6 @@ import json
 from .models import (
     ChatRequest, ChatResponse,
     SemanticSearchRequest, SemanticSearchResponse,
-    SimilaritySearchRequest, RecommendationsRequest,
     DocumentsResponse, DocumentMetadata, DocumentFullTextResponse,
     EmbeddingRequest, EmbeddingResponse,
     WorkspaceCreateRequest, WorkspaceResponse, WorkspaceListResponse, WorkspaceInfo,
@@ -197,72 +196,8 @@ class CZeroEngineClient:
         response.raise_for_status()
         return SemanticSearchResponse(**response.json())
         
-    async def find_similar_chunks(
-        self,
-        chunk_id: str,
-        limit: int = 5,
-        similarity_threshold: float = 0.5
-    ) -> SemanticSearchResponse:
-        """
-        Find chunks similar to a given chunk ID.
-        
-        Useful for finding related content or duplicates.
-        
-        Args:
-            chunk_id: ID of the reference chunk
-            limit: Maximum number of results
-            similarity_threshold: Minimum similarity score
-            
-        Returns:
-            SemanticSearchResponse with similar chunks
-        """
-        request = SimilaritySearchRequest(
-            chunk_id=chunk_id,
-            limit=limit,
-            similarity_threshold=similarity_threshold
-        )
-        
-        self._log(f"Finding similar to chunk: {chunk_id}")
-        response = await self.client.post(
-            f"{self.base_url}/api/vector/search/similarity",
-            json=request.model_dump()
-        )
-        response.raise_for_status()
-        return SemanticSearchResponse(**response.json())
-        
-    async def get_recommendations(
-        self,
-        positive_chunk_ids: List[str],
-        negative_chunk_ids: Optional[List[str]] = None,
-        limit: int = 10
-    ) -> SemanticSearchResponse:
-        """
-        Get content recommendations based on positive/negative examples.
-        
-        Uses vector math to find content similar to positive examples
-        and dissimilar to negative examples.
-        
-        Args:
-            positive_chunk_ids: Chunk IDs to find similar content to
-            negative_chunk_ids: Chunk IDs to avoid similarity to
-            limit: Maximum number of recommendations
-            
-        Returns:
-            SemanticSearchResponse with recommended chunks
-        """
-        request = RecommendationsRequest(
-            positive_chunk_ids=positive_chunk_ids,
-            negative_chunk_ids=negative_chunk_ids or [],
-            limit=limit
-        )
-        
-        self._log(f"Getting recommendations based on {len(positive_chunk_ids)} positive examples")
-        response = await self.client.post(
-            f"{self.base_url}/api/vector/recommendations",
-            json=request.model_dump()
-        )
-        response.raise_for_status()
-        return SemanticSearchResponse(**response.json())
+    # Note: find_similar_chunks and get_recommendations methods have been deprecated
+    # Use semantic_search or hierarchical_retrieve for similar functionality
         
     # ==================== Document Management ====================
         
@@ -511,12 +446,14 @@ class CZeroEngineClient:
         system_prompt_template: Optional[str] = None,
         conversation_history: Optional[List[Dict[str, str]]] = None,
         max_tokens: int = 1024,
-        temperature: float = 0.7
+        temperature: float = 0.7,
+        workspace_filter: Optional[str] = None
     ) -> PersonaChatResponse:
         """
         Chat with a specific AI persona.
         
         Each persona has its own personality, expertise, and interaction style.
+        Now supports RAG context when workspace_filter is provided.
         
         Args:
             persona_id: ID of the persona to chat with
@@ -526,6 +463,7 @@ class CZeroEngineClient:
             conversation_history: Optional conversation history for context
             max_tokens: Maximum tokens to generate
             temperature: Temperature for generation
+            workspace_filter: Optional workspace ID for RAG context
             
         Returns:
             PersonaChatResponse with persona's response
@@ -537,7 +475,8 @@ class CZeroEngineClient:
             system_prompt_template=system_prompt_template,
             conversation_history=conversation_history,
             max_tokens=max_tokens,
-            temperature=temperature
+            temperature=temperature,
+            workspace_filter=workspace_filter
         )
         
         self._log(f"Chatting with persona: {persona_id}")

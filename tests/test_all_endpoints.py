@@ -215,26 +215,8 @@ class EndpointTester:
         )
         
         # Extract chunk_id for similarity search
-        if search_data and search_data.get("results"):
-            self.chunk_id = search_data["results"][0]["chunk_id"]
-            
-            # Similarity search
-            await self.test_endpoint(
-                "Similarity Search", "POST", "/api/vector/search/similarity",
-                {
-                    "chunk_id": self.chunk_id,
-                    "limit": 3
-                }
-            )
-            
-            # Recommendations
-            await self.test_endpoint(
-                "Get Recommendations", "POST", "/api/vector/recommendations",
-                {
-                    "positive_chunk_ids": [self.chunk_id],
-                    "limit": 5
-                }
-            )
+        # Note: Similarity search and recommendations endpoints are deprecated
+        # The new hierarchical retrieval system replaces these with direct query-based search
         
         # 7. Hierarchical Retrieval
         console.print("\n[bold yellow]═══ Hierarchical Retrieval ═══[/bold yellow]")
@@ -274,12 +256,23 @@ class EndpointTester:
         if persona_data and persona_data.get("persona_id"):
             self.persona_id = persona_data["persona_id"]
             
-            # Chat with persona
+            # Chat with persona (without RAG)
             await self.test_endpoint(
-                "Persona Chat", "POST", "/api/personas/chat",
+                "Persona Chat (No RAG)", "POST", "/api/personas/chat",
                 {
                     "persona_id": self.persona_id,
                     "message": "Hello, test persona!",
+                    "max_tokens": 100
+                }
+            )
+            
+            # Chat with persona (with RAG)
+            await self.test_endpoint(
+                "Persona Chat (With RAG)", "POST", "/api/personas/chat",
+                {
+                    "persona_id": self.persona_id,
+                    "message": "Based on the test document, what can you tell me?",
+                    "workspace_filter": self.workspace_id,
                     "max_tokens": 100
                 }
             )
