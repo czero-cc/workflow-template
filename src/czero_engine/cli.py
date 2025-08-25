@@ -13,8 +13,6 @@ import json
 from .client import CZeroEngineClient
 from .workflows import (
     KnowledgeBaseWorkflow,
-    RAGWorkflow,
-    PersonaWorkflow,
     DocumentProcessingWorkflow
 )
 
@@ -31,9 +29,9 @@ def health():
                 result = await client.health_check()
                 console.print(Panel(
                     f"[green]✓[/green] CZero Engine API is healthy\n"
-                    f"Status: {result['status']}\n"
-                    f"Version: {result.get('version', 'Unknown')}\n"
-                    f"Service: {result.get('service', 'czero-api')}",
+                    f"Status: {result.status}\n"
+                    f"Version: {result.version}\n"
+                    f"Service: {result.service}",
                     title="Health Check",
                     expand=False
                 ))
@@ -47,11 +45,9 @@ def health():
 def create_knowledge_base(
     directory: str = typer.Argument(..., help="Directory containing documents"),
     name: str = typer.Option("Knowledge Base", "--name", "-n", help="Workspace name"),
-    chunk_size: int = typer.Option(1000, "--chunk-size", "-c", help="Chunk size"),
-    chunk_overlap: int = typer.Option(200, "--overlap", "-o", help="Chunk overlap"),
     patterns: Optional[str] = typer.Option(None, "--patterns", "-p", help="File patterns (comma-separated)")
 ):
-    """Create a knowledge base from documents."""
+    """Create a knowledge base from documents using hierarchical chunking."""
     async def create():
         async with KnowledgeBaseWorkflow() as workflow:
             file_patterns = patterns.split(",") if patterns else None
@@ -67,13 +63,11 @@ def create_knowledge_base(
                     result = await workflow.create_knowledge_base(
                         name=name,
                         directory_path=directory,
-                        file_patterns=file_patterns,
-                        chunk_size=chunk_size,
-                        chunk_overlap=chunk_overlap
+                        file_patterns=file_patterns
                     )
                     
                     console.print(f"[green]✓[/green] Knowledge base created successfully")
-                    console.print(f"  Workspace ID: {result['workspace_id']}")
+                    console.print(f"  Workspace ID: {result['workspace']['id']}")
                     console.print(f"  Files processed: {result['files_processed']}")
                     console.print(f"  Chunks created: {result['chunks_created']}")
                     
@@ -87,7 +81,7 @@ def create_knowledge_base(
 def search(
     query: str = typer.Argument(..., help="Search query"),
     limit: int = typer.Option(10, "--limit", "-l", help="Number of results"),
-    threshold: float = typer.Option(0.7, "--threshold", "-t", help="Similarity threshold"),
+    threshold: float = typer.Option(0.3, "--threshold", "-t", help="Similarity threshold"),
     workspace: Optional[str] = typer.Option(None, "--workspace", "-w", help="Workspace filter")
 ):
     """Semantic search across documents."""
@@ -173,11 +167,11 @@ def chat(
 ):
     """Interactive chat with a persona."""
     async def run_chat():
-        async with PersonaWorkflow() as workflow:
-            # Select persona
-            await workflow.select_persona(persona)
+        async with CZeroEngineClient(timeout=120.0) as client:
+            console.print("[cyan]Interactive chat started. Type 'exit' to quit.[/cyan]")
+            console.print(f"[dim]Using persona: {persona}[/dim]\n")
             
-            console.print("[cyan]Interactive chat started. Type 'exit' to quit.[/cyan]\n")
+            conversation_history = []
             
             while True:
                 try:
@@ -187,13 +181,32 @@ def chat(
                         console.print("[yellow]Goodbye![/yellow]")
                         break
                         
-                    # Get response
-                    await workflow.chat(
-                        message=message,
-                        model_id=model,
-                        maintain_history=True
-                    )
+                    with Progress(
+                        SpinnerColumn(),
+                        TextColumn("[progress.description]{task.description}"),
+                        console=console
+                    ) as progress:
+                        progress.add_task("Generating response...", total=None)
+                        
+                        # Get response from persona
+                        response = await client.chat_with_persona(
+                            persona_id=persona,
+                            message=message,
+                            model_id=model,
+                            conversation_history=conversation_history,
+                            max_tokens=300  # Shorter for interactive chat
+                        )
+                        
+                    console.print(f"\n[bold cyan]{persona}:[/bold cyan] {response.response}\n")
                     
+                    # Update conversation history
+                    conversation_history.append({"role": "user", "content": message})
+                    conversation_history.append({"role": "assistant", "content": response.response})
+                    
+                    # Keep history manageable
+                    if len(conversation_history) > 20:
+                        conversation_history = conversation_history[-20:]
+                        
                 except KeyboardInterrupt:
                     console.print("\n[yellow]Chat interrupted[/yellow]")
                     break
@@ -207,35 +220,73 @@ def chat(
 def process(
     directory: str = typer.Argument(..., help="Directory to process"),
     workspace: str = typer.Option("default", "--workspace", "-w", help="Workspace name"),
-    batch_size: int = typer.Option(10, "--batch", "-b", help="Batch size"),
-    chunk_size: int = typer.Option(1000, "--chunk-size", "-c", help="Chunk size")
+    batch_size: int = typer.Option(10, "--batch", "-b", help="Batch size")
 ):
-    """Process documents in a directory."""
+    """Process documents in a directory using hierarchical chunking."""
     async def run_process():
-        async with DocumentProcessingWorkflow() as workflow:
-            # Discover files
-            files = workflow.discover_files(directory)
+        async with CZeroEngineClient() as client:
+            # Create or find workspace
+            workspaces = await client.list_workspaces()
+            workspace_obj = None
             
-            if not files:
-                console.print("[yellow]No files found to process[/yellow]")
+            for ws in workspaces.workspaces:
+                if ws.name == workspace:
+                    workspace_obj = ws
+                    break
+            
+            if not workspace_obj:
+                console.print(f"[cyan]Creating workspace: {workspace}[/cyan]")
+                workspace_obj = await client.create_workspace(
+                    name=workspace,
+                    path=directory
+                )
+            
+            # Discover files
+            directory_path = Path(directory)
+            if not directory_path.exists():
+                console.print(f"[red]Directory not found: {directory}[/red]")
                 return
                 
-            console.print(f"[cyan]Found {len(files)} files to process[/cyan]")
+            files = list(directory_path.rglob("*"))
+            file_paths = [str(f) for f in files if f.is_file() and f.suffix.lower() in ['.txt', '.md', '.pdf', '.docx', '.py', '.js', '.json', '.yaml', '.yml']]
             
-            # Process files
-            stats = await workflow.process_documents(
-                files=files,
-                workspace_name=workspace,
-                batch_size=batch_size,
-                chunk_size=chunk_size
-            )
+            if not file_paths:
+                console.print("[yellow]No processable files found[/yellow]")
+                return
+                
+            console.print(f"[cyan]Found {len(file_paths)} files to process[/cyan]")
+            
+            # Process files in batches
+            total_chunks = 0
+            total_processed = 0
+            
+            for i in range(0, len(file_paths), batch_size):
+                batch = file_paths[i:i+batch_size]
+                
+                with Progress(
+                    SpinnerColumn(),
+                    TextColumn("[progress.description]{task.description}"),
+                    console=console
+                ) as progress:
+                    progress.add_task(f"Processing batch {i//batch_size + 1}/{(len(file_paths) + batch_size - 1)//batch_size}...", total=None)
+                    
+                    try:
+                        result = await client.process_files(
+                            workspace_id=workspace_obj.id,
+                            files=batch
+                        )
+                        
+                        total_chunks += result.chunks_created
+                        total_processed += len(batch)
+                        
+                    except Exception as e:
+                        console.print(f"[red]Error processing batch: {e}[/red]")
             
             # Show results
             console.print(f"\n[green]Processing complete![/green]")
-            console.print(f"  Success rate: {stats.success_rate:.1f}%")
-            console.print(f"  Files processed: {stats.processed_files}/{stats.total_files}")
-            console.print(f"  Chunks created: {stats.total_chunks}")
-            console.print(f"  Time taken: {stats.processing_time:.2f}s")
+            console.print(f"  Files processed: {total_processed}/{len(file_paths)}")
+            console.print(f"  Chunks created: {total_chunks}")
+            console.print(f"  Workspace: {workspace_obj.name} ({workspace_obj.id})")
             
     asyncio.run(run_process())
 
@@ -244,8 +295,33 @@ def process(
 def personas():
     """List available personas."""
     async def list_personas():
-        async with PersonaWorkflow() as workflow:
-            await workflow.list_personas()
+        async with CZeroEngineClient() as client:
+            try:
+                result = await client.list_personas()
+                
+                if result.personas:
+                    table = Table(title="Available Personas")
+                    table.add_column("ID", style="cyan")
+                    table.add_column("Name", style="green")
+                    table.add_column("Tagline", style="yellow")
+                    table.add_column("Specialty", style="magenta")
+                    table.add_column("Default", style="blue")
+                    
+                    for persona in result.personas:
+                        table.add_row(
+                            persona.id,
+                            persona.name,
+                            persona.tagline or "No tagline",
+                            persona.specialty or "General",
+                            "✓" if persona.is_default else ""
+                        )
+                        
+                    console.print(table)
+                else:
+                    console.print("[yellow]No personas found[/yellow]")
+                    
+            except Exception as e:
+                console.print(f"[red]✗ Failed to list personas: {e}[/red]")
             
     asyncio.run(list_personas())
 

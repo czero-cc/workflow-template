@@ -20,7 +20,7 @@
 - **🔍 Semantic Search**: Vector-based search with hierarchical context support
 - **📄 Document Processing**: Extract, chunk, and embed multiple file formats
 - **🤖 RAG System**: Context-aware AI responses using your documents
-- **🎭 AI Personas**: Gestalt adaptive assistant + custom personas
+- **🎭 AI Personas**: Gestalt (default assistant) + custom personas
 - **📊 Workspace Management**: Organize and process documents efficiently (CZero Engine's main offering)
 - **⚡ High Performance**: Batch processing, streaming responses, GPU acceleration
 - **🔗 LangGraph Integration**: Build complex AI agents with CZero Engine as backend
@@ -123,7 +123,7 @@ results = await client.semantic_search(
 async with CZeroEngineClient() as client:
     # Chat with default Gestalt persona
     response = await client.chat_with_persona(
-        persona_id="gestalt-default",  # Adaptive Intelligence
+        persona_id="gestalt-default",  # default persona
         message="Analyze the implications of AGI"
     )
     
