@@ -129,9 +129,7 @@ async def basic_document_processing():
             files = [str(tech_doc), str(business_doc), str(code_doc)]
             result = await client.process_files(
                 workspace_id=workspace.id,
-                files=files,
-                chunk_size=200,  # Smaller chunks for demo
-                chunk_overlap=50
+                files=files
             )
             
             print(f"✅ Processing complete:")
@@ -268,9 +266,7 @@ async def advanced_processing_workflow():
             if md_files:
                 stats = await workflow.process_documents(
                     files=md_files,
-                    workspace_name="Documentation",
-                    chunk_size=300,
-                    chunk_overlap=50
+                    workspace_name="Documentation"
                 )
                 print(f"\n📝 Markdown files:")
                 print(f"   Files submitted: {stats.total_files}")
@@ -282,9 +278,7 @@ async def advanced_processing_workflow():
             if py_files:
                 stats = await workflow.process_documents(
                     files=py_files,
-                    workspace_name="Source Code",
-                    chunk_size=200,
-                    chunk_overlap=30
+                    workspace_name="Source Code"
                 )
                 print(f"\n🐍 Python files:")
                 print(f"   Files submitted: {stats.total_files}")
@@ -316,9 +310,7 @@ async def advanced_processing_workflow():
             stats = await workflow.process_documents(
                 files=batch_files,
                 workspace_name="Batch Demo",
-                batch_size=3,  # Process 3 files at a time
-                chunk_size=100,
-                chunk_overlap=20
+                batch_size=3  # Process 3 files at a time
             )
             
             print(f"\n⚡ Batch processing results:")
@@ -374,9 +366,7 @@ async def hierarchical_processing():
             
             result = await client.process_files(
                 workspace_id=workspace.id,
-                files=[str(doc_path)],
-                chunk_size=100,
-                chunk_overlap=20
+                files=[str(doc_path)]
             )
             
             print(f"✅ Hierarchical processing complete:")

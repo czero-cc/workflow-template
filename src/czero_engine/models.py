@@ -222,3 +222,104 @@ class HealthResponse(BaseModel):
     service: str
     version: str
     timestamp: str
+
+
+# Persona Creation Models
+class PersonaCreateRequest(BaseModel):
+    """Request model for /api/personas/create endpoint."""
+    id: str
+    name: str
+    tagline: Optional[str] = None
+    description: Optional[str] = None
+    background: Optional[str] = None
+    traits: Optional[List[str]] = None
+    specialty: str
+    greeting_message: Optional[str] = None
+    system_prompt_template: str
+    workspace_id: Optional[str] = None
+
+
+class PersonaCreateResponse(BaseModel):
+    """Response model for persona creation."""
+    success: bool
+    persona_id: str
+    message: str
+
+
+# Workspace Add Dialogue Models
+class AddDialogueRequest(BaseModel):
+    """Request model for /api/workspaces/add-dialogue endpoint."""
+    workspace_id: str
+    dialogue_text: str
+    character_name: str = "Unknown Character"
+
+
+class AddDialogueResponse(BaseModel):
+    """Response model for adding dialogue to workspace."""
+    success: bool
+    chunks_created: int
+    file_path: str
+    message: str
+
+
+# Document Full Text Model
+class DocumentFullTextResponse(BaseModel):
+    """Response model for /api/documents/:id/full-text endpoint."""
+    document_id: str
+    title: str
+    file_path: str
+    content: str
+    length: int
+
+
+# Hierarchical Retrieval Models
+class ChunkWithScore(BaseModel):
+    """Chunk with similarity score for hierarchical retrieval."""
+    chunk_id: str
+    content: str
+    similarity_score: float
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+
+
+class ChunkInfo(BaseModel):
+    """Basic chunk information for hierarchical retrieval."""
+    chunk_id: str
+    content: str
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+
+
+class KGTriple(BaseModel):
+    """Knowledge graph triple."""
+    subject: str
+    predicate: str
+    object: str
+
+
+class DocumentInfo(BaseModel):
+    """Document information for hierarchical retrieval."""
+    document_id: str
+    document_name: str
+    total_chunks: int
+
+
+class HierarchicalResult(BaseModel):
+    """Single hierarchical retrieval result."""
+    small_chunk: ChunkWithScore
+    big_chunk: Optional[ChunkInfo] = None
+    kg_triples: Optional[List[KGTriple]] = None
+    document_info: Optional[DocumentInfo] = None
+
+
+class HierarchicalRetrievalRequest(BaseModel):
+    """Request model for /api/retrieve endpoint."""
+    query: str
+    workspace_id: str
+    limit: int = 5
+    similarity_threshold: float = 0.3
+    include_kg_triples: bool = False
+    include_document_info: bool = False
+
+
+class HierarchicalRetrievalResponse(BaseModel):
+    """Response model for hierarchical retrieval."""
+    results: List[HierarchicalResult]

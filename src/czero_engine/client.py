@@ -12,12 +12,15 @@ from .models import (
     ChatRequest, ChatResponse,
     SemanticSearchRequest, SemanticSearchResponse,
     SimilaritySearchRequest, RecommendationsRequest,
-    DocumentsResponse, DocumentMetadata,
+    DocumentsResponse, DocumentMetadata, DocumentFullTextResponse,
     EmbeddingRequest, EmbeddingResponse,
     WorkspaceCreateRequest, WorkspaceResponse, WorkspaceListResponse, WorkspaceInfo,
     ProcessFilesRequest, ProcessFilesResponse, ProcessingConfig,
     PersonaListResponse, PersonaChatRequest, PersonaChatResponse,
+    PersonaCreateRequest, PersonaCreateResponse,
     HealthResponse,
+    AddDialogueRequest, AddDialogueResponse,
+    HierarchicalRetrievalRequest, HierarchicalRetrievalResponse,
 )
 
 console = Console()
@@ -275,6 +278,36 @@ class CZeroEngineClient:
         response.raise_for_status()
         return DocumentsResponse(**response.json())
         
+    async def get_document(self, document_id: str) -> DocumentMetadata:
+        """
+        Get metadata for a specific document.
+        
+        Args:
+            document_id: ID of the document
+            
+        Returns:
+            DocumentMetadata for the document
+        """
+        self._log(f"Fetching document: {document_id}")
+        response = await self.client.get(f"{self.base_url}/api/documents/{document_id}")
+        response.raise_for_status()
+        return DocumentMetadata(**response.json())
+        
+    async def get_document_full_text(self, document_id: str) -> DocumentFullTextResponse:
+        """
+        Get the full text content of a document.
+        
+        Args:
+            document_id: ID of the document
+            
+        Returns:
+            DocumentFullTextResponse with full document content
+        """
+        self._log(f"Fetching full text for document: {document_id}")
+        response = await self.client.get(f"{self.base_url}/api/documents/{document_id}/full-text")
+        response.raise_for_status()
+        return DocumentFullTextResponse(**response.json())
+        
     # ==================== Embedding Generation ====================
         
     async def generate_embedding(
@@ -405,6 +438,55 @@ class CZeroEngineClient:
         response.raise_for_status()
         return ProcessFilesResponse(**response.json())
         
+    async def delete_workspace(self, workspace_id: str) -> Dict[str, Any]:
+        """
+        Delete a workspace by ID.
+        
+        Args:
+            workspace_id: ID of the workspace to delete
+            
+        Returns:
+            Success status and message
+        """
+        self._log(f"Deleting workspace: {workspace_id}")
+        response = await self.client.delete(f"{self.base_url}/api/workspaces/{workspace_id}")
+        response.raise_for_status()
+        return response.json()
+        
+    async def add_dialogue_to_workspace(
+        self,
+        workspace_id: str,
+        dialogue_text: str,
+        character_name: str = "Unknown Character"
+    ) -> AddDialogueResponse:
+        """
+        Add dialogue text to a workspace as a new document.
+        
+        This is useful for adding conversation history or character dialogues
+        to your knowledge base.
+        
+        Args:
+            workspace_id: ID of the workspace
+            dialogue_text: The dialogue text to add
+            character_name: Name of the character/speaker
+            
+        Returns:
+            AddDialogueResponse with processing results
+        """
+        request = AddDialogueRequest(
+            workspace_id=workspace_id,
+            dialogue_text=dialogue_text,
+            character_name=character_name
+        )
+        
+        self._log(f"Adding dialogue to workspace {workspace_id}")
+        response = await self.client.post(
+            f"{self.base_url}/api/workspaces/add-dialogue",
+            json=request.model_dump()
+        )
+        response.raise_for_status()
+        return AddDialogueResponse(**response.json())
+        
     # ==================== Persona Endpoints ====================
         
     async def list_personas(self) -> PersonaListResponse:
@@ -465,6 +547,121 @@ class CZeroEngineClient:
         )
         response.raise_for_status()
         return PersonaChatResponse(**response.json())
+        
+    async def create_persona(
+        self,
+        id: str,
+        name: str,
+        specialty: str,
+        system_prompt_template: str,
+        tagline: Optional[str] = None,
+        description: Optional[str] = None,
+        background: Optional[str] = None,
+        traits: Optional[List[str]] = None,
+        greeting_message: Optional[str] = None,
+        workspace_id: Optional[str] = None
+    ) -> PersonaCreateResponse:
+        """
+        Create a new AI persona.
+        
+        Args:
+            id: Unique ID for the persona
+            name: Display name of the persona
+            specialty: The persona's area of expertise
+            system_prompt_template: System prompt that defines the persona's behavior
+            tagline: Short tagline for the persona
+            description: Detailed description
+            background: Background story
+            traits: List of personality traits
+            greeting_message: Initial greeting message
+            workspace_id: Optional workspace to associate with
+            
+        Returns:
+            PersonaCreateResponse with creation status
+        """
+        request = PersonaCreateRequest(
+            id=id,
+            name=name,
+            tagline=tagline,
+            description=description,
+            background=background,
+            traits=traits,
+            specialty=specialty,
+            greeting_message=greeting_message,
+            system_prompt_template=system_prompt_template,
+            workspace_id=workspace_id
+        )
+        
+        self._log(f"Creating persona: {name}")
+        response = await self.client.post(
+            f"{self.base_url}/api/personas/create",
+            json=request.model_dump(exclude_none=True)
+        )
+        response.raise_for_status()
+        return PersonaCreateResponse(**response.json())
+        
+    async def delete_persona(self, persona_id: str) -> Dict[str, Any]:
+        """
+        Delete a persona by ID.
+        
+        Args:
+            persona_id: ID of the persona to delete
+            
+        Returns:
+            Success status and message
+        """
+        self._log(f"Deleting persona: {persona_id}")
+        response = await self.client.delete(f"{self.base_url}/api/personas/{persona_id}")
+        response.raise_for_status()
+        return response.json()
+        
+    # ==================== Hierarchical Retrieval ====================
+    
+    async def hierarchical_retrieve(
+        self,
+        query: str,
+        workspace_id: str,
+        limit: int = 5,
+        similarity_threshold: float = 0.3,
+        include_kg_triples: bool = False,
+        include_document_info: bool = False
+    ) -> HierarchicalRetrievalResponse:
+        """
+        Perform hierarchical retrieval with enhanced context.
+        
+        This advanced retrieval method provides:
+        - Small chunks for precision
+        - Big chunks for context
+        - Optional knowledge graph triples
+        - Optional document information
+        
+        Args:
+            query: Search query
+            workspace_id: Workspace to search in (required)
+            limit: Maximum number of results
+            similarity_threshold: Minimum similarity score
+            include_kg_triples: Include knowledge graph relationships
+            include_document_info: Include document metadata
+            
+        Returns:
+            HierarchicalRetrievalResponse with structured results
+        """
+        request = HierarchicalRetrievalRequest(
+            query=query,
+            workspace_id=workspace_id,
+            limit=limit,
+            similarity_threshold=similarity_threshold,
+            include_kg_triples=include_kg_triples,
+            include_document_info=include_document_info
+        )
+        
+        self._log(f"Performing hierarchical retrieval in workspace {workspace_id}")
+        response = await self.client.post(
+            f"{self.base_url}/api/retrieve",
+            json=request.model_dump()
+        )
+        response.raise_for_status()
+        return HierarchicalRetrievalResponse(**response.json())
         
     # ==================== Utility Methods ====================
         

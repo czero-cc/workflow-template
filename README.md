@@ -75,29 +75,33 @@ from czero_engine.workflows import KnowledgeBaseWorkflow
 async with KnowledgeBaseWorkflow() as kb:
     result = await kb.create_knowledge_base(
         name="Technical Docs",
-        directory_path="./documents",
-        chunk_size=1000,
-        chunk_overlap=200
+        directory_path="./documents"
     )
-    print(f"Processed {result['files_processed']} chunks")  # Hierarchical chunking creates multiple chunks per file
+    print(f"Processed {result['files_processed']} files, created {result['chunks_created']} chunks")  # Hierarchical chunking creates multiple chunks per file
 ```
 
 ### 2. RAG-Enhanced Q&A
 
 ```python
-from czero_engine.workflows import RAGWorkflow
-
-async with RAGWorkflow() as rag:
+# Use direct client for RAG-enhanced chat
+async with CZeroEngineClient() as client:
     # Ask with document context
-    answer = await rag.ask(
-        question="What are the key features?",
+    response = await client.chat(
+        message="What are the key features?",
+        use_rag=True,
         chunk_limit=5,
-        similarity_threshold=0.7
+        similarity_threshold=0.3  # Lower threshold for better recall
     )
     
     # Compare with/without RAG
-    comparison = await rag.compare_with_without_rag(
-        question="Explain semantic search"
+    response_no_rag = await client.chat(
+        message="Explain semantic search",
+        use_rag=False
+    )
+    response_with_rag = await client.chat(
+        message="Explain semantic search",
+        use_rag=True,
+        similarity_threshold=0.3
     )
 ```
 
@@ -115,19 +119,18 @@ results = await client.semantic_search(
 ### 4. AI Persona Interactions
 
 ```python
-from czero_engine.workflows import PersonaWorkflow
-
-async with PersonaWorkflow() as personas:
+# Use direct client for persona interactions
+async with CZeroEngineClient() as client:
     # Chat with default Gestalt persona
-    await personas.select_persona("gestalt-default")  # Adaptive Intelligence
-    response = await personas.chat(
-        "Analyze the implications of AGI"
+    response = await client.chat_with_persona(
+        persona_id="gestalt-default",  # Adaptive Intelligence
+        message="Analyze the implications of AGI"
     )
     
-    # Or chat directly without selecting
-    response = await personas.chat(
-        "What are the key features of CZero Engine?",
-        persona_id="gestalt-default"
+    # Or use regular chat (defaults to Gestalt if no persona specified)
+    response = await client.chat(
+        message="What are the key features of CZero Engine?",
+        use_rag=True
     )
 ```
 
@@ -204,12 +207,10 @@ async with CZeroEngineClient(
         path="./papers"
     )
     
-    # Process documents (uses SmallToBig hierarchical chunking by default)
+    # Process documents (uses SmallToBig hierarchical chunking automatically)
     result = await client.process_files(
         workspace_id=workspace.id,
-        files=["paper1.pdf", "paper2.md"],
-        chunk_size=500,
-        chunk_overlap=100
+        files=["paper1.pdf", "paper2.md"]
     )
     
     # Semantic search
@@ -231,8 +232,8 @@ async with CZeroEngineClient(
 # Check system health
 uv run czero health
 
-# Create knowledge base
-uv run czero create-kb ./docs --name "My KB" --chunk-size 1000
+# Create knowledge base (uses hierarchical chunking automatically)
+uv run czero create-kb ./docs --name "My KB"
 
 # Search documents
 uv run czero search "query text" --limit 10 --threshold 0.7
@@ -318,19 +319,33 @@ from czero_engine.models import (
 
 ```python
 async def build_qa_system(docs_dir: str):
-    # 1. Create knowledge base
-    async with KnowledgeBaseWorkflow() as kb:
-        await kb.create_knowledge_base("QA KB", docs_dir)
-        workspace_id = kb.workspace_id
-    
-    # 2. Interactive Q&A
-    async with RAGWorkflow() as rag:
+    async with CZeroEngineClient() as client:
+        # 1. Create workspace and process documents
+        workspace = await client.create_workspace(
+            name="QA KB", 
+            path=docs_dir
+        )
+        
+        # Process documents in the directory
+        files = list(Path(docs_dir).glob("**/*"))
+        file_paths = [str(f) for f in files if f.is_file()]
+        await client.process_files(
+            workspace_id=workspace.id,
+            files=file_paths
+        )
+        
+        # 2. Interactive Q&A
         while True:
             q = input("Question: ")
             if q == 'quit': break
             
-            answer = await rag.ask(q, workspace_filter=workspace_id)
-            print(f"Answer: {answer.response}\n")
+            response = await client.chat(
+                message=q,
+                use_rag=True,
+                workspace_filter=workspace.id,
+                similarity_threshold=0.3
+            )
+            print(f"Answer: {response.response}\n")
 ```
 
 ### Document Similarity Analysis
@@ -353,20 +368,33 @@ async def analyze_similarity(doc1: str, doc2: str):
 ### Batch Processing with Progress
 
 ```python
-async with DocumentProcessingWorkflow(verbose=True) as processor:
-    files = processor.discover_files("./docs", patterns=["*.pdf"])
-    
-    stats = await processor.process_documents(
-        files=files,
-        workspace_name="Batch Process",
-        batch_size=10,  # Process 10 files at a time
-        chunk_size=800
+async with CZeroEngineClient() as client:
+    # Create workspace
+    workspace = await client.create_workspace(
+        name="Batch Process",
+        path="./docs"
     )
     
-    print(f"Files submitted: {stats.total_files}")
-    print(f"Chunks created: {stats.total_chunks}")  # Hierarchical chunks
-    print(f"Est. Success rate: {stats.success_rate:.1f}%")
-    print(f"Throughput: {stats.total_chunks/stats.processing_time:.1f} chunks/s")
+    # Discover files
+    files = list(Path("./docs").glob("**/*.pdf"))
+    file_paths = [str(f) for f in files]
+    
+    # Process in batches of 10
+    import math
+    batch_size = 10
+    total_chunks = 0
+    
+    for i in range(0, len(file_paths), batch_size):
+        batch = file_paths[i:i+batch_size]
+        result = await client.process_files(
+            workspace_id=workspace.id,
+            files=batch
+        )
+        total_chunks += result.chunks_created
+        print(f"Batch {i//batch_size + 1}: {result.chunks_created} chunks")
+    
+    print(f"Files submitted: {len(file_paths)}")
+    print(f"Total chunks created: {total_chunks}")  # Hierarchical chunks
 ```
 
 ## 🌐 Cloud AI Integration
@@ -438,9 +466,11 @@ CZERO_VERBOSE=false
 ## 📊 Performance Tips
 
 1. **Batch Processing**: Process multiple files in parallel
-2. **Chunk Size**: 500-1000 tokens for general documents
+2. **Hierarchical Chunking**: System automatically uses SmallToBig chunking for optimal retrieval
 3. **Hierarchy**: Use hierarchical search for structured documents
 4. **Models**: Ensure LLM and embedding models are pre-loaded
+5. **Local LLM Performance**: Expect 10-30 second response times for chat operations
+6. **Similarity Thresholds**: Use 0.3 or lower for broader results with E5 models
 
 ## 🤝 Contributing
 

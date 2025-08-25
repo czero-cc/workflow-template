@@ -56,8 +56,6 @@ class KnowledgeBaseWorkflow:
         name: str,
         directory_path: str,
         file_patterns: Optional[List[str]] = None,
-        chunk_size: int = 1000,
-        chunk_overlap: int = 200,
         description: Optional[str] = None
     ) -> Dict[str, Any]:
         """
@@ -67,8 +65,6 @@ class KnowledgeBaseWorkflow:
             name: Name for the knowledge base/workspace
             directory_path: Path to directory containing documents
             file_patterns: Optional file patterns to include (e.g., ["*.pdf", "*.txt"])
-            chunk_size: Size of text chunks for processing
-            chunk_overlap: Overlap between chunks
             description: Optional description for the workspace
             
         Returns:
@@ -140,12 +136,10 @@ class KnowledgeBaseWorkflow:
                 batch_paths = [str(f.absolute()) for f in batch]
                 
                 try:
-                    # Process batch
+                    # Process batch using hierarchical chunking
                     result = await self.client.process_files(
                         workspace_id=workspace.id,
-                        files=batch_paths,
-                        chunk_size=chunk_size,
-                        chunk_overlap=chunk_overlap
+                        files=batch_paths
                     )
                     
                     total_processed += result.files_processed
@@ -174,8 +168,6 @@ class KnowledgeBaseWorkflow:
         summary.add_row("Files Processed", str(total_processed))
         summary.add_row("Files Failed", str(failed_files))
         summary.add_row("Chunks Created", str(total_chunks))
-        summary.add_row("Chunk Size", f"{chunk_size} chars")
-        summary.add_row("Chunk Overlap", f"{chunk_overlap} chars")
         
         console.print(summary)
         
@@ -183,11 +175,7 @@ class KnowledgeBaseWorkflow:
             "workspace": workspace.model_dump(),
             "files_processed": total_processed,
             "files_failed": failed_files,
-            "chunks_created": total_chunks,
-            "processing_config": {
-                "chunk_size": chunk_size,
-                "chunk_overlap": chunk_overlap
-            }
+            "chunks_created": total_chunks
         }
         
     async def query(
@@ -311,8 +299,6 @@ async def example_knowledge_base():
             name="Technical Documentation",
             directory_path="./docs",
             file_patterns=["*.md", "*.txt", "*.pdf"],
-            chunk_size=1000,
-            chunk_overlap=200,
             description="Technical documentation and guides"
         )
         
